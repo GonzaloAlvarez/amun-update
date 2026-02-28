@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  author: Gonzalo Alvarez
+  description: Update and upgrade system packages across platforms
+  license: GPL-3.0
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+    - name: MacOSX
+      versions:
+        - all
+    - name: ArchLinux
+      versions:
+        - all
+dependencies: []

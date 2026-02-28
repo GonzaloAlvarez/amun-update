@@ -1,0 +1,54 @@
+---
+- name: Update and upgrade packages (Debian)
+  apt:
+    upgrade: full
+    update_cache: yes
+    allow_downgrade: yes
+    autoclean: yes
+    autoremove: yes
+  become: true
+  retries: 5
+  delay: 5
+  register: result
+  until: result is not failed
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Update and upgrade Homebrew formulae (macOS)
+  community.general.homebrew:
+    update_homebrew: true
+    upgrade_all: true
+  when: ansible_facts['os_family'] == 'Darwin'
+
+- name: Update and upgrade Homebrew casks (macOS)
+  community.general.homebrew_cask:
+    upgrade_all: true
+    greedy: true
+  when: ansible_facts['os_family'] == 'Darwin'
+
+- name: Cleanup Homebrew cache (macOS)
+  command: brew cleanup
+  changed_when: false
+  when: ansible_facts['os_family'] == 'Darwin'
+
+- name: Update and upgrade packages (Arch)
+  community.general.pacman:
+    update_cache: yes
+    upgrade: yes
+  become: true
+  when: ansible_facts['os_family'] == 'Archlinux'
+
+- name: Find orphan packages (Arch)
+  command: pacman -Qdtq
+  register: orphans
+  changed_when: false
+  failed_when: false
+  become: true
+  when: ansible_facts['os_family'] == 'Archlinux'
+
+- name: Remove orphan packages (Arch)
+  command: "pacman -Rns --noconfirm {{ orphans.stdout_lines | join(' ') }}"
+  become: true
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - orphans.rc == 0
+    - orphans.stdout_lines | length > 0
