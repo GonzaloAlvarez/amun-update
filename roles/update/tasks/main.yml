@@ -1,17 +1,17 @@
 ---
 - name: Check if dotfiles repo exists
   stat:
-    path: "{{ ansible_env.HOME }}/.dotfiles"
+    path: "{{ ansible_facts['env']['HOME'] }}/.dotfiles"
   register: dotfiles_stat
 
 - name: Check if gear repo exists
   stat:
-    path: "{{ ansible_env.HOME }}/.gear"
+    path: "{{ ansible_facts['env']['HOME'] }}/.gear"
   register: gear_stat
 
 - name: Check if amun script exists
   stat:
-    path: "{{ ansible_env.HOME }}/bin/amun"
+    path: "{{ ansible_facts['env']['HOME'] }}/bin/amun"
   register: amun_stat
 
 - name: Update and upgrade packages (Debian)
@@ -71,7 +71,7 @@
 - name: Update dotfiles repo
   git:
     repo: "https://github.com/GonzaloAlvarez/dotfiles.git"
-    dest: "{{ ansible_env.HOME }}/.dotfiles"
+    dest: "{{ ansible_facts['env']['HOME'] }}/.dotfiles"
     update: yes
   when: dotfiles_stat.stat.exists
   register: dotfiles_update
@@ -79,7 +79,7 @@
 - name: Run dotfiles setup
   ansible.builtin.shell:
     cmd: "./setup"
-    chdir: "{{ ansible_env.HOME }}/.dotfiles/"
+    chdir: "{{ ansible_facts['env']['HOME'] }}/.dotfiles/"
   when:
     - dotfiles_stat.stat.exists
     - dotfiles_update is changed
@@ -87,13 +87,13 @@
 - name: Update gear repo
   git:
     repo: "https://github.com/GonzaloAlvarez/gear.git"
-    dest: "{{ ansible_env.HOME }}/.gear"
+    dest: "{{ ansible_facts['env']['HOME'] }}/.gear"
     update: yes
   when: gear_stat.stat.exists
 
 - name: Update amun script
   get_url:
     url: https://raw.githubusercontent.com/gonzaloalvarez/amun/main/amun
-    dest: "{{ ansible_env.HOME }}/bin/amun"
+    dest: "{{ ansible_facts['env']['HOME'] }}/bin/amun"
     mode: "0755"
   when: amun_stat.stat.exists
