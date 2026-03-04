@@ -97,3 +97,64 @@
     dest: "{{ ansible_facts['env']['HOME'] }}/bin/amun"
     mode: "0755"
   when: amun_stat.stat.exists
+
+- name: Check if kepr exists
+  stat:
+    path: "{{ ansible_facts['env']['HOME'] }}/bin/kepr"
+  register: kepr_stat
+
+- name: Get latest kepr version
+  uri:
+    url: https://api.github.com/repos/gonzaloalvarez/kepr/releases/latest
+    return_content: yes
+  register: kepr_release
+  when: kepr_stat.stat.exists
+
+- name: Set kepr version and arch facts
+  set_fact:
+    kepr_version: "{{ kepr_release.json.tag_name }}"
+    kepr_arch: "{{ 'amd64' if ansible_facts['architecture'] == 'x86_64' else ansible_facts['architecture'] }}"
+  when: kepr_stat.stat.exists
+
+- name: Set kepr OS fact
+  set_fact:
+    kepr_os: "{{ 'darwin' if ansible_facts['os_family'] == 'Darwin' else 'linux' }}"
+  when: kepr_stat.stat.exists
+
+- name: Download and install kepr
+  block:
+    - name: Create temp directory for kepr
+      tempfile:
+        state: directory
+      register: kepr_tmp
+
+    - name: Download kepr tarball
+      get_url:
+        url: "https://github.com/GonzaloAlvarez/kepr/releases/download/{{ kepr_version }}/kepr-{{ kepr_version }}-{{ kepr_os }}-{{ kepr_arch }}.tar.gz"
+        dest: "{{ kepr_tmp.path }}/kepr.tar.gz"
+
+    - name: Extract kepr tarball
+      unarchive:
+        src: "{{ kepr_tmp.path }}/kepr.tar.gz"
+        dest: "{{ kepr_tmp.path }}"
+        remote_src: yes
+
+    - name: Find kepr binary
+      find:
+        paths: "{{ kepr_tmp.path }}"
+        patterns: "kepr-{{ kepr_os }}-*"
+        file_type: file
+      register: kepr_binary
+
+    - name: Install kepr binary
+      copy:
+        src: "{{ kepr_binary.files[0].path }}"
+        dest: "{{ ansible_facts['env']['HOME'] }}/bin/kepr"
+        mode: "0755"
+        remote_src: yes
+
+    - name: Remove kepr temp directory
+      file:
+        path: "{{ kepr_tmp.path }}"
+        state: absent
+  when: kepr_stat.stat.exists
