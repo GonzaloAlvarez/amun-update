@@ -41,7 +41,10 @@
   when: ansible_facts['os_family'] == 'Darwin'
 
 - name: Cleanup Homebrew cache (macOS)
-  command: brew cleanup
+  ansible.builtin.command:
+    cmd: brew cleanup
+  environment:
+    PATH: "/opt/homebrew/bin:/usr/local/bin:{{ ansible_env.PATH }}"
   changed_when: false
   when: ansible_facts['os_family'] == 'Darwin'
 
