@@ -1,5 +1,7 @@
 ---
 galaxy_info:
+  role_name: update
+  namespace: amun
   author: Gonzalo Alvarez
   description: Update and upgrade system packages across platforms
   license: GPL-3.0
