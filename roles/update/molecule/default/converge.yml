@@ -1,0 +1,10 @@
+---
+- name: Converge
+  hosts: all
+  vars:
+    pki_ca_url: "http://localhost:8000/cert/ca.crt"
+  tasks:
+    - name: Run ca_cert.yml only
+      ansible.builtin.import_role:
+        name: update
+        tasks_from: ca_cert.yml

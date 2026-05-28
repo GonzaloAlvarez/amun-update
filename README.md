@@ -20,6 +20,11 @@ amun update
 | macOS | Homebrew | update, upgrade, cask upgrade (greedy), cleanup |
 | Arch Linux | pacman | -Syu (sync, refresh, upgrade), orphan removal |
 
+The update run also refreshes the homelab step-ca root CA from
+`http://pki.lan/cert/ca.crt` and re-trusts it (Debian/Ubuntu and Arch trust
+dirs; macOS System keychain). Silently skipped when the PKI host is
+unreachable, so the update stays green off-LAN.
+
 ## License
 
 GNU GENERAL PUBLIC LICENSE

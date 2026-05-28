@@ -68,6 +68,9 @@
     - orphans.rc == 0
     - orphans.stdout_lines | length > 0
 
+- name: Refresh homelab CA certificate
+  ansible.builtin.import_tasks: ca_cert.yml
+
 - name: Update dotfiles repo
   git:
     repo: "https://github.com/GonzaloAlvarez/dotfiles.git"
