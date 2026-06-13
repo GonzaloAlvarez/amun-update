@@ -172,3 +172,43 @@
         path: "{{ kepr_tmp.path }}"
         state: absent
   when: kepr_stat.stat.exists
+
+- name: Reap legacy amun state paths
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ ansible_env.HOME }}/Library/Application Support/amun"
+    - "{{ ansible_env.HOME }}/.local/share/amun"
+    - "{{ ansible_env.HOME }}/.provisioning"
+    - "{{ ansible_env.HOME }}/.amun"
+    - "{{ ansible_env.HOME }}/.bt"
+    - "{{ ansible_env.HOME }}/.bt-domain"
+    - "{{ ansible_env.HOME }}/.domain.py"
+
+- name: Discover amun repos under ~/dev
+  ansible.builtin.find:
+    paths: "{{ ansible_env.HOME }}/dev"
+    patterns: "amun*"
+    file_type: directory
+    recurse: no
+  register: amun_repos
+  failed_when: false
+
+- name: Find stray venv / pycache dirs inside amun repos
+  ansible.builtin.find:
+    paths: "{{ amun_repos.files | map(attribute='path') | list }}"
+    patterns: ".venv,.venv-domain,__pycache__"
+    file_type: directory
+    recurse: no
+    hidden: yes
+  register: amun_strays
+  when: amun_repos.matched | default(0) | int > 0
+
+- name: Remove stray amun venv / pycache dirs
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ amun_strays.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path }}"
