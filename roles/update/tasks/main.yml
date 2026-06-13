@@ -32,12 +32,20 @@
   community.general.homebrew:
     update_homebrew: true
     upgrade_all: true
+  retries: 5
+  delay: 5
+  register: brew_result
+  until: brew_result is not failed
   when: ansible_facts['os_family'] == 'Darwin'
 
 - name: Update and upgrade Homebrew casks (macOS)
   community.general.homebrew_cask:
     upgrade_all: true
     greedy: true
+  retries: 5
+  delay: 5
+  register: brew_cask_result
+  until: brew_cask_result is not failed
   when: ansible_facts['os_family'] == 'Darwin'
 
 - name: Cleanup Homebrew cache (macOS)
