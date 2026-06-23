@@ -157,10 +157,14 @@
         dest: "{{ kepr_tmp.path }}/kepr.tar.gz"
 
     - name: Extract kepr tarball
-      unarchive:
-        src: "{{ kepr_tmp.path }}/kepr.tar.gz"
-        dest: "{{ kepr_tmp.path }}"
-        remote_src: yes
+      # Use tar directly rather than ansible.builtin.unarchive: the module
+      # hard-requires GNU tar for .tar.gz and refuses macOS's bundled bsdtar
+      # ("GNU tar required"). `tar -xzf` works identically on bsdtar and GNU
+      # tar, so this stays cross-platform with no extra dependency.
+      ansible.builtin.command:
+        cmd: tar -xzf kepr.tar.gz
+        chdir: "{{ kepr_tmp.path }}"
+      changed_when: true
 
     - name: Find kepr binary
       find:
