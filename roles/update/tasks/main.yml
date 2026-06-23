@@ -190,10 +190,17 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
+  # NOTE: ~/.provisioning is deliberately NOT reaped here. It is the amun
+  # framework's live checkout root (amun clones each plugin to
+  # ~/.provisioning/<repo> and runs it from there), so this very playbook
+  # executes from inside it. Deleting it mid-run pulls out the cwd and
+  # Ansible's module-loader paths -> "No such file or directory" /
+  # "Cannot resolve 'ansible.builtin.file'". amun manages its lifecycle
+  # itself (rmtree + recreate at run start), so reaping it here is both
+  # redundant and self-destructive.
   loop:
     - "{{ ansible_env.HOME }}/Library/Application Support/amun"
     - "{{ ansible_env.HOME }}/.local/share/amun"
-    - "{{ ansible_env.HOME }}/.provisioning"
     - "{{ ansible_env.HOME }}/.amun"
     - "{{ ansible_env.HOME }}/.bt"
     - "{{ ansible_env.HOME }}/.bt-domain"
