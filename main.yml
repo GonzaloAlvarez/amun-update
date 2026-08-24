@@ -1,4 +1,9 @@
 ---
 - hosts: all
+  pre_tasks:
+    - name: Detect Termux platform
+      ansible.builtin.set_fact:
+        amun_is_termux: "{{ (amun_platform | default('')) == 'termux'
+                            or (ansible_facts['env']['TERMUX_VERSION'] | default('')) != '' }}"
   roles:
     - { role: update, become: false }

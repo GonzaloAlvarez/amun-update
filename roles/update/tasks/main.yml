@@ -28,6 +28,16 @@
   until: result is not failed
   when: ansible_facts['os_family'] == 'Debian'
 
+- name: Update and upgrade packages (Termux)
+  ansible.builtin.command:
+    cmd: pkg upgrade -y
+  retries: 5
+  delay: 5
+  register: termux_upgrade
+  until: termux_upgrade is not failed
+  changed_when: "'0 upgraded, 0 newly installed' not in termux_upgrade.stdout"
+  when: amun_is_termux | default(false)
+
 - name: Take ownership of the Homebrew prefix (macOS)
   ansible.builtin.file:
     path: /opt/homebrew
@@ -99,6 +109,21 @@
   when: dotfiles_stat.stat.exists
   register: dotfiles_update
 
+- name: Remove untouched stock termux.properties that Seshat manages
+  ansible.builtin.shell: |
+    f="$HOME/.termux/termux.properties"
+    removed=0
+    if [ -f "$f" ] && ! grep -q '^[[:space:]]*[^#[:space:]]' "$f"; then
+      rm -f "$f"
+      removed=1
+    fi
+    echo "termux_properties_removed=$removed"
+  register: stock_termux_properties_cleanup
+  changed_when: "'termux_properties_removed=1' in stock_termux_properties_cleanup.stdout"
+  when:
+    - dotfiles_stat.stat.exists
+    - amun_is_termux | default(false)
+
 - name: Run dotfiles setup
   ansible.builtin.shell:
     cmd: "./setup"
@@ -119,7 +144,18 @@
     url: https://raw.githubusercontent.com/gonzaloalvarez/amun/main/amun
     dest: "{{ ansible_facts['env']['HOME'] }}/bin/amun"
     mode: "0755"
-  when: amun_stat.stat.exists
+  when:
+    - amun_stat.stat.exists
+    - not (amun_is_termux | default(false))
+
+- name: Update amun-termux bootstrap
+  get_url:
+    url: https://raw.githubusercontent.com/gonzaloalvarez/amun/main/amun-termux
+    dest: "{{ ansible_facts['env']['HOME'] }}/.local/lib/amun/amun-termux"
+    mode: "0755"
+  when:
+    - amun_stat.stat.exists
+    - amun_is_termux | default(false)
 
 - name: Check if kepr exists
   stat:
