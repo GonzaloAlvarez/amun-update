@@ -109,6 +109,28 @@
   when: dotfiles_stat.stat.exists
   register: dotfiles_update
 
+# Same guard as amun core's dotfiles role: machines where Seshat never got to
+# own these files still carry stock copies (/etc/skel, Debian base-files) that
+# Seshat correctly blocks on (exit 2). Remove them ONLY when byte-identical to
+# the pristine source — a file the user has touched still blocks, by design.
+- name: Remove untouched stock dotfiles that Seshat manages
+  ansible.builtin.shell: |
+    changed=0
+    for f in .bashrc .bash_profile; do
+      [ -f "$HOME/$f" ] || continue
+      for src in "/etc/skel/$f" "/usr/share/base-files/dot$f"; do
+        if [ -f "$src" ] && cmp -s "$HOME/$f" "$src"; then
+          rm -f "$HOME/$f"
+          changed=1
+          break
+        fi
+      done
+    done
+    echo "stock_cleanup_changed=$changed"
+  register: stock_dotfiles_cleanup
+  changed_when: "'stock_cleanup_changed=1' in stock_dotfiles_cleanup.stdout"
+  when: dotfiles_stat.stat.exists
+
 - name: Remove untouched stock termux.properties that Seshat manages
   ansible.builtin.shell: |
     f="$HOME/.termux/termux.properties"
@@ -124,13 +146,18 @@
     - dotfiles_stat.stat.exists
     - amun_is_termux | default(false)
 
+# Runs whenever the repo exists (not only when the pull changed it): a setup
+# that failed or blocked on a previous run must be retried even if no new
+# dotfiles commits landed since, otherwise the machine stays broken until the
+# next unrelated dotfiles change. Seshat exits 0 quickly when all current.
+# Seshat exit codes: 0 clean, 1 error, 2 blocked/unsafe — all nonzero must
+# fail the play (dotfiles CLAUDE.md). No failed_when: false here.
 - name: Run dotfiles setup
   ansible.builtin.shell:
     cmd: "./setup"
     chdir: "{{ ansible_facts['env']['HOME'] }}/.dotfiles/"
-  when:
-    - dotfiles_stat.stat.exists
-    - dotfiles_update is changed
+  changed_when: false
+  when: dotfiles_stat.stat.exists
 
 - name: Update gear repo
   git:
