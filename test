@@ -1,0 +1,24 @@
+#!/bin/bash
+set -e
+# amun-update/test — stage amun core + this plugin, run the amun harness (L2).
+#   ./test [platform] [amun/test flags...]    DEBUG=1 for a shell before teardown
+#   AMUN_CORE=~/dev/amun ./test ...           local amun core instead of GitHub main
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN="$(basename "$SCRIPT_DIR")"
+STAGING=$(mktemp -d)
+trap 'rm -rf "$STAGING"' EXIT SIGINT SIGTERM
+
+# Default platform for a bare ./test (override with any amun/test args).
+if [ $# -eq 0 ]; then
+    set -- debian
+fi
+
+if [ -n "${AMUN_CORE:-}" ]; then
+    cp -r "$AMUN_CORE" "$STAGING/amun"
+else
+    git clone --depth 1 https://github.com/GonzaloAlvarez/amun.git "$STAGING/amun"
+fi
+cp -r "$SCRIPT_DIR" "$STAGING/$PLUGIN"
+
+# -p stays LAST: amun/test's -p greedily consumes trailing non-dash args.
+exec "$STAGING/amun/test" "$@" -p "${PLUGIN#amun-}"
