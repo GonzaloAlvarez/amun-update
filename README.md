@@ -19,6 +19,12 @@ amun update
 | Debian/Ubuntu | apt | update, full-upgrade, autoremove, autoclean |
 | macOS | Homebrew | update, upgrade, cask upgrade (greedy), cleanup |
 | Arch Linux | pacman | -Syu (sync, refresh, upgrade), orphan removal |
+| Omarchy | omarchy-update | full Omarchy update, unattended (`-y`): snapshot, keyrings, pacman, migrations, AUR, mise |
+
+On Omarchy a direct `pacman -Syu` is blocked by the distro's pre-transaction
+guard hook, so the role runs `omarchy-update -y` instead (detected via
+os-release `ID=omarchy`; Ansible reports the OS family as plain Archlinux).
+Orphan removal is left to Omarchy's own update flow there.
 
 The update run also refreshes the homelab step-ca root CA from
 `http://pki.lan/cert/ca.crt` and re-trusts it (Debian/Ubuntu and Arch trust

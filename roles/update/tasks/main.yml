@@ -75,26 +75,71 @@
   changed_when: false
   when: ansible_facts['os_family'] == 'Darwin'
 
-- name: Update and upgrade packages (Arch)
+# Ansible reports Omarchy as os_family 'Archlinux' (it keys off
+# /etc/arch-release, not os-release), so detect it by its os-release ID —
+# same probe as amun core's utils role.
+- name: Detect Omarchy (owns its own updates; blocks direct pacman -Syu)
+  ansible.builtin.command: grep -qi '^ID=omarchy' /etc/os-release
+  register: omarchy_probe
+  changed_when: false
+  failed_when: false
+  when: ansible_facts['os_family'] == 'Archlinux'
+
+- name: Update and upgrade packages (Arch, not Omarchy)
   community.general.pacman:
     update_cache: yes
     upgrade: yes
   become: true
-  when: ansible_facts['os_family'] == 'Archlinux'
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - (omarchy_probe.rc | default(1)) != 0
 
+# Omarchy aborts a direct `pacman -Syu` via its 00-omarchy-update-guard
+# pre-transaction hook; the sanctioned path is `omarchy-update`, which wraps
+# the upgrade with snapshot, keyrings, migrations, post-update hooks, AUR,
+# mise, orphan review, and restart checks. Unattended specifics:
+#   -y                       promises no questions (skips the confirm prompt)
+#   OMARCHY_UPDATE_LOGGED=1  skips the `script -qefc` transcript re-exec:
+#                            script allocates a pty, and with a pty the `gum
+#                            confirm` prompts in the restart/orphan steps
+#                            would wait forever on input that never comes;
+#                            without one every prompt takes its non-tty
+#                            fallback (report and move on, never reboot).
+#   OMARCHY_PATH             normally set by Omarchy's shell env-bootstrap;
+#                            omarchy-update-dev reads it under `set -u`, so
+#                            Ansible's bare environment must provide it.
+# Runs as the login user (migrations + update state live in $HOME); the
+# internal sudo calls ride the passwordless sudo amun establishes.
+- name: Update Omarchy and system packages (Omarchy)
+  ansible.builtin.command:
+    cmd: omarchy-update -y
+  environment:
+    OMARCHY_UPDATE_LOGGED: "1"
+    OMARCHY_PATH: /usr/share/omarchy
+  register: omarchy_update
+  changed_when: "'there is nothing to do' not in omarchy_update.stdout"
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - (omarchy_probe.rc | default(1)) == 0
+
+# Orphan cleanup stays out of the Omarchy path: omarchy-update reviews
+# orphans itself and deliberately keeps removal interactive.
 - name: Find orphan packages (Arch)
   command: pacman -Qdtq
   register: orphans
   changed_when: false
   failed_when: false
   become: true
-  when: ansible_facts['os_family'] == 'Archlinux'
+  when:
+    - ansible_facts['os_family'] == 'Archlinux'
+    - (omarchy_probe.rc | default(1)) != 0
 
 - name: Remove orphan packages (Arch)
   command: "pacman -Rns --noconfirm {{ orphans.stdout_lines | join(' ') }}"
   become: true
   when:
     - ansible_facts['os_family'] == 'Archlinux'
+    - (omarchy_probe.rc | default(1)) != 0
     - orphans.rc == 0
     - orphans.stdout_lines | length > 0
 
