@@ -21,6 +21,11 @@ amun update
 | Arch Linux | pacman | -Syu (sync, refresh, upgrade), orphan removal |
 | Omarchy | omarchy-update | full Omarchy update, unattended (`-y`): snapshot, keyrings, pacman, migrations, AUR, mise |
 
+Debian/Ubuntu hosts always upgrade through `apt-get dist-upgrade` (`force_apt_get`).
+Without it Ansible's apt module switches to `aptitude full-upgrade` wherever
+aptitude is installed (Raspberry Pi OS ships it) and hands it the apt-get-only
+`--allow-downgrades` flag, which aptitude rejects with `unrecognized option`.
+
 On Omarchy a direct `pacman -Syu` is blocked by the distro's pre-transaction
 guard hook, so the role runs `omarchy-update -y` instead (detected via
 os-release `ID=omarchy`; Ansible reports the OS family as plain Archlinux).

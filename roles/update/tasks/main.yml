@@ -14,6 +14,11 @@
     path: "{{ ansible_facts['env']['HOME'] }}/bin/amun"
   register: amun_stat
 
+# force_apt_get: Ansible's apt module prefers aptitude whenever it is installed
+# (Raspberry Pi OS ships it), and `aptitude full-upgrade` rejects the apt-get-only
+# --allow-downgrades flag that allow_downgrade adds -> "unrecognized option".
+# Pin apt-get dist-upgrade so every Debian host behaves the same (mirrors amun
+# core's utils role).
 - name: Update and upgrade packages (Debian)
   apt:
     upgrade: full
@@ -21,6 +26,7 @@
     allow_downgrade: yes
     autoclean: yes
     autoremove: yes
+    force_apt_get: yes
   become: true
   retries: 5
   delay: 5
